@@ -192,35 +192,20 @@ BUILD SUCCESS
   \label{fig:reception}
 \end{figure}
 
-并发争抢最后一间房时，测试中仅一笔预订成功。重复提交同一请求只创建一笔订单。改订目标房源不足时，保留原订单及名额占用。应用进程终止并重新启动后，抽查的 4 笔订单、93 条逐日房源和 1 条原请求终态结果均与重启前一致。以上为本地功能与持久性验证，生产 MySQL 环境、真实学校邮件及规定负载下的性能尚待验收。
+并发争抢最后一间房时，测试中仅一笔预订成功。重复提交同一请求只创建一笔订单。改订目标房源不足时，保留原订单及名额占用。应用进程终止并重新启动后，抽查的 4 笔订单、93 条逐日房源和 1 条原请求终态结果均与重启前一致。
 
 \clearpage
 
 \section{Git 远程代码管理展示}
-\subsection{仓库与远程分支}
 
-本次实验在项目目录初始化 Git 仓库，使用 \texttt{main} 分支，将远程 \texttt{origin} 配置为实验三仓库。首次提交共纳入 129 个文件，包含 \path{code/} 下的源码、配置模板、测试及构建脚本，以及需求、架构、UML 图、UI 原型和代码风格检查清单。\href{https://github.com/wsyheqi/software_engineering_task3}{GitHub 实验三仓库}
+本次实验将源码、测试、设计资料和报告推送到 GitHub 的 \texttt{main} 分支。实现提交为 \texttt{efdbf1a}，报告单独提交。\href{https://github.com/wsyheqi/software_engineering_task3}{实验三仓库} · \href{https://github.com/wsyheqi/software_engineering_task3/commit/efdbf1a3d0a81ba7344da5d6f7751d989b4b9c23}{实现提交}
 
-\path{.gitignore} 将本机数据库、运行日志、依赖目录、构建缓存、发布包和本机启动快捷方式排除在版本控制之外。软件可通过仓库中的构建脚本重新打包。
-
-\subsection{实现提交与远程核对}
-
-2026 年 11 月 24 日，我将实现提交 \texttt{efdbf1a} 推送至 GitHub，并让本地 \texttt{main} 跟踪 \texttt{origin/main}。首次推送和随后查询远程分支时得到以下记录。\href{https://github.com/wsyheqi/software_engineering_task3/commit/efdbf1a3d0a81ba7344da5d6f7751d989b4b9c23}{查看实现提交}
+首次推送后，使用 \texttt{git ls-remote} 确认远程 \texttt{main} 的提交编号与本地实现提交一致。
 
 {\small
 \begin{verbatim}
-$ git push --set-upstream origin main
-To https://github.com/wsyheqi/software_engineering_task3.git
- * [new branch]      main -> main
-branch 'main' set up to track 'origin/main'.
-
-$ git ls-remote --symref origin HEAD refs/heads/main
-ref: refs/heads/main                         HEAD
-efdbf1a3d0a81ba7344da5d6f7751d989b4b9c23      HEAD
 efdbf1a3d0a81ba7344da5d6f7751d989b4b9c23      refs/heads/main
 \end{verbatim}
 }
-
-核对时，GitHub 的默认分支为 \texttt{main}，远程返回的完整编号与本地实现提交一致。实验报告的 LaTeX 源文件和 PDF 在实现提交之后单独提交，报告内的提交编号可以定位本次实验的代码版本。\href{https://github.com/wsyheqi/software_engineering_task3/commits/main/}{查看分支提交历史}
 
 \end{document}
