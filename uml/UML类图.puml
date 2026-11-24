@@ -1,0 +1,156 @@
+@startuml
+title 核心领域类图
+
+package "用户与需求" {
+  class "用户账号" as User {
+    账号编号: ID
+    角色: 来宾/接待人员/酒店人员/管理员
+    所属酒店编号: ID [0..1]
+    +校验责任范围(对象)
+  }
+  class "来宾" as Guest {
+    来宾编号: ID
+    姓名: String
+    联系方式: String
+  }
+  class "住宿需求" as Demand {
+    需求编号: ID
+    入住日期: Date
+    离店日期: Date
+    人数: Integer
+    预算B: Decimal
+    最大距离D: Decimal = 20
+    房型房数及特殊要求: String
+  }
+  User "1" -- "0..*" Demand : 负责接待
+  User "0..1" -- "0..1" Guest : 来宾账号绑定本人
+  Demand "0..*" -- "1..*" Guest : 计划入住人
+}
+
+package "酒店与房源" {
+  class "酒店" as Hotel {
+    酒店编号: ID
+    名称及地址: String
+    学校审核通过: Boolean
+    学校评价: Decimal [0..1]
+  }
+  class "接待地点" as Site {
+    地点编号: ID
+    名称及地址: String
+  }
+  class "酒店地点距离" as Distance {
+    距离公里: Decimal
+  }
+  class "房型" as RoomType {
+    房型编号: ID
+    名称: String
+    可住人数: Integer
+  }
+  class "每日房源" as Inventory {
+    住宿日期: Date
+    当前单价: Decimal
+    学校名额: Integer
+    占用量: Integer
+    维修清洁扣减量: Integer
+    停售: Boolean
+    +检查可用量(房数)
+  }
+  Hotel "1" -- "0..*" RoomType
+  RoomType "1" *-- "0..*" Inventory
+  Hotel "1" -- "0..*" Distance
+  Site "1" -- "0..*" Distance
+}
+
+package "订单与履约" {
+  class "订单" as Order {
+    订单编号: ID
+    入住日期: Date
+    离店日期: Date
+    下单时间: DateTime
+    状态: 订单状态
+    +确认()
+    +改订()
+    +取消()
+    +停业关闭()
+  }
+  class "订单明细" as Item {
+    明细编号: ID
+    房数: Integer
+  }
+  class "逐晚预订明细" as Night {
+    住宿日期: Date
+    房数: Integer
+    锁定单价: Decimal
+    占用已释放: Boolean
+  }
+  class "预订请求" as Request {
+    请求标识: ID {unique}
+    方案摘要: String
+    处理进度: String
+    业务结果: String
+    +查询结果()
+  }
+  class "适用规则快照" as Rule {
+    规则版本: String
+    取消截止时间: DateTime
+    取消及提前退房规则: String
+  }
+  class "来宾入住记录" as CheckIn {
+    登记编号: ID
+    实际到店时间: DateTime
+    实际离店时间: DateTime [0..1]
+  }
+  class "实际间夜" as ActualNight {
+    实住日期: Date
+    实住间数: Integer
+    锁定单价: Decimal
+  }
+  class "费用记录" as Fee {
+    类别: 住宿/取消/未入住/额外费用
+    金额: Decimal
+    核对状态: String
+  }
+  class "停业安置记录" as Relocation {
+    安置编号: ID
+    受影响日期范围: DateRange
+    处理进度: String
+  }
+  class "特殊改订确认" as Approval {
+    申请编号: ID
+    待确认方案摘要: String
+    管理员确认时间: DateTime [0..1]
+    酒店确认时间: DateTime [0..1]
+    确认意见与操作者: String
+  }
+  Order "1" *-- "1..*" Item
+  Item "0..*" --> "1" RoomType
+  Item "1" *-- "1..*" Night
+  Night "0..*" --> "1" Inventory
+  Request "1" --> "0..1" Order : 初次预订结果
+  Order "1" *-- "0..1" Rule
+  Order "0..*" -- "1..*" Guest : 本单来宾
+  Order "1" *-- "0..*" CheckIn
+  CheckIn "0..*" --> "1" Guest : 实际登记人
+  Item "1" *-- "0..*" ActualNight
+  Order "1" *-- "0..*" Fee
+  Order "1" *-- "0..*" Approval
+  Relocation "0..1" --> "1" Order : 原单
+  Relocation "0..1" --> "0..1" Order : 成功替代新单
+}
+
+User "1" -- "0..*" Order : 负责接待
+User "1" -- "0..*" Request : 发起
+Demand "1" <-- "0..*" Order : 来源需求
+Demand "0..*" --> "1" Site
+Order "0..*" --> "1" Hotel
+
+legend bottom
+  一单一家酒店、相同入住离店日期，可含多房型多间房。
+  每日房源唯一键为酒店、房型、住宿日期；占用区间为[入住日,离店日)。
+  订单确认时保存逐晚锁定价及规则快照；全部明细一起成功或失败。
+  学校评价可缺失，有值时为0至100分；审核通过且至少70分才可订。
+  来宾入住按人登记，实际间夜按房间及日期统计；停售与占用分开保存。
+  已确认订单必须有规则快照；同一明细同一实住日期仅一条间夜汇总。
+  截止后特殊改订的双方确认绑定具体方案，方案变化后不能沿用旧批准。
+endlegend
+@enduml

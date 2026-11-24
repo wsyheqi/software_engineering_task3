@@ -1,0 +1,8 @@
+.runtime
+**/node_modules
+**/target
+**/data
+frontend/dist
+.git
+.env
+docs/screenshots

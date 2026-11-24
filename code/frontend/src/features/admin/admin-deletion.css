@@ -1,0 +1,3 @@
+.admin-row-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.text-button.delete-button{color:#bd525b}
+.text-button.delete-button:hover{color:#9b333e}

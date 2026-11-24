@@ -1,0 +1,3 @@
+https://checkstyle.sourceforge.io/google_style.html
+https://github.com/cpplint/cpplint
+https://www.pylint.org/ 

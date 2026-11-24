@@ -1,0 +1,64 @@
+@startuml
+title 系统逻辑组件图
+
+actor "四类用户" as Users
+component "Web界面" as Web
+
+package "学校来宾酒店预订系统" {
+  package "接待业务" as Business {
+    component "查询与推荐" as Search
+    component "订单管理" as Order
+    component "入住与退房" as Stay
+    component "异常安置" as Relocation
+  }
+  package "基础资料" as Master {
+    component "酒店与校方资料" as Hotel
+    component "房源管理" as Inventory
+  }
+  package "通用支撑" as Support {
+    component "身份与权限" as Auth
+    component "通知与待处理" as Notice
+    component "统计报表" as Report
+    component "操作日志" as Audit
+  }
+  database "业务数据库" as DB
+}
+cloud "学校邮件服务" as Email
+
+Users --> Web
+Web --> Business : 查询、预订及履约操作
+Web --> Master : 按角色维护资料
+Web --> Support : 认证及通知、报表、日志查询
+
+Search --> Hotel : 审核、评价与距离
+Search --> Inventory : 逐晚价格与可用量
+Order --> Inventory : 复核、占用、改订与释放
+Order --> Hotel : 酒店资格与费用规则
+Stay --> Order : 状态与实际履约
+Stay --> Inventory : 续住及未住日期释放
+Stay --> Notice : 核实提醒、未入住通知
+Order --> Notice : 特殊改订双方确认待办
+Stay --> Notice : 续住确认及额外费用核对待办
+Relocation --> Search : 合格替代候选
+Relocation --> Order : 待安置、替代新单与关闭关联
+Relocation --> Inventory : 停售、暂留与成功后释放
+Relocation --> Notice : 停业双渠道通知
+Notice --> Email : 停业邮件
+Business ..> Auth : 受保护操作校验角色及责任范围
+Master ..> Auth : 校验校方与本酒店维护权限
+
+Business --> DB : 订单、请求结果、逐晚占用及履约
+Master --> DB : 酒店、地点、规则与逐日房源
+Support --> DB : 权限、通知任务、日志及统计读取
+
+legend bottom
+  身份与权限：服务端校验角色、接待责任、酒店范围及字段可见性。
+  酒店与校方资料：管理员维护地点、距离、审核评价及约定费用规则。
+  房源管理：酒店维护本酒店房型、逐日价格、学校名额及停售信息。
+  操作日志：各模块记录关键操作和越权尝试，查询受角色及责任范围限制。
+  统计报表：区分下单日期、计划住宿日期、实际住宿日期三种口径。
+  事务边界：订单、全部占用和请求结果一致；停业成功安置同步关闭释放原单。
+  各组件为同一应用内的逻辑模块；通知失败不撤销已提交业务。
+  通知与待处理承载业务待办；待办处理仍调用原业务模块校验状态及权限。
+endlegend
+@enduml

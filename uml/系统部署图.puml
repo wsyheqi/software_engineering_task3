@@ -1,0 +1,45 @@
+@startuml
+title 学校来宾酒店预订系统——首期部署方案
+top to bottom direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+node "用户终端" {
+  artifact "浏览器\n四类角色工作区" as Browser
+}
+
+node "验收服务器：4 核 / 8GB\n50 家酒店、1 万历史订单、100 人同时使用" as Server {
+  node "Nginx" as Nginx {
+    artifact "前端静态资源" as Static
+    component "HTTPS 入口 / API 代理" as Proxy
+  }
+  node "后端进程：模块化单体" as Backend {
+    component "REST 接口与十个逻辑模块" as Api
+    component "任务执行器\n请求恢复、到店提醒、通知重试" as Worker
+  }
+  database "MySQL / InnoDB\n业务表、请求表、任务表、审计表" as DB
+  folder "持久化数据目录\n数据库数据与恢复日志" as Volume
+  component "系统服务\n进程自动拉起与健康检查" as Supervisor
+}
+
+cloud "学校邮件服务（SMTP）" as Email
+folder "独立备份存储\n备份与恢复演练材料" as Backup
+
+Browser --> Proxy : HTTPS\n局域网延迟不超过 20ms
+Proxy --> Static : 页面资源
+Proxy --> Api : /api 同域代理
+Api --> DB : 本地数据库事务
+Worker --> DB : 读取已提交任务\n锁定领取并回写结果
+Worker --> Email : 提交后发送
+DB --> Volume
+DB ..> Backup : 定期备份
+Supervisor ..> Backend : 监测与拉起
+
+legend bottom
+  查询：至少 95% 在 2 秒内；预订：至少 95% 在 3 秒内取得明确正确结果。
+  查询与预订分别至少采样 1000 次；这些是验收目标，尚未实测。
+  普通故障后 1 小时内恢复，已确认订单不丢失且重试不重复。
+  任务执行器与业务接口首期同进程，共用持久化数据库；邮件失败不回滚业务。
+  备份不能替代已提交事务的持久化机制；数据库不直接暴露给浏览器。
+endlegend
+@enduml

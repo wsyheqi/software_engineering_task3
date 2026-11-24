@@ -1,0 +1,80 @@
+@startuml
+title 角色与功能用例图
+left to right direction
+
+actor "来宾" as Guest
+actor "学校接待人员" as Reception
+actor "酒店工作人员" as Hotel
+actor "平台管理员\n即学校管理员" as Admin
+
+rectangle "学校来宾酒店预订系统" {
+  package "来宾服务" {
+    usecase "查看本人住宿安排" as ViewStay
+  }
+  package "接待业务" {
+    usecase "录入住宿需求" as Demand
+    usecase "查询与推荐酒店" as Search
+    usecase "确认方案并自动预订" as Book
+    usecase "展示适用费用规则" as ShowRule
+    usecase "查询请求处理结果" as Result
+    usecase "改订与整单取消" as Change
+    usecase "确认续住及核对额外费用" as Extend
+    usecase "选择并确认停业替代方案" as Relocate
+  }
+  package "酒店业务" {
+    usecase "维护房型、价格与学校名额" as Inventory
+    usecase "逐人入住与补登记" as Checkin
+    usecase "正常及提前退房登记" as Checkout
+    usecase "提出续住及额外费用" as ProposeExtend
+    usecase "记录晚到保留及登记未入住" as NoShow
+    usecase "确认停业及影响范围" as Closure
+    usecase "确认截止后的特殊改订" as Special
+  }
+  package "管理与监督" {
+    usecase "管理账号与酒店资料" as Accounts
+    usecase "维护地点、距离及审核评价" as Quality
+    usecase "配置约定费用规则" as Rules
+    usecase "处理费用争议及通知失败项" as Exception
+    usecase "按权限查看统计报表" as Report
+    usecase "按权限查询操作日志" as Audit
+    usecase "查看相关通知" as Notice
+  }
+}
+
+Guest -- ViewStay
+Reception -- Demand
+Reception -- Search
+Reception -- Book
+Reception -- Result
+Reception -- Change
+Reception -- Extend
+Reception -- Relocate
+Reception -- Report
+Reception -- Notice
+Hotel -- Inventory
+Hotel -- Checkin
+Hotel -- Checkout
+Hotel -- NoShow
+Hotel -- Closure
+Hotel -- Special
+Hotel -- ProposeExtend
+Hotel -- Report
+Hotel -- Audit
+Hotel -- Notice
+Admin -- Accounts
+Admin -- Quality
+Admin -- Rules
+Admin -- Exception
+Admin -- Special
+Admin -- Report
+Admin -- Audit
+Admin -- Notice
+Book ..> ShowRule : <<include>>
+
+legend bottom
+  来宾只看本人安排及脱敏电话；接待人员限负责范围；酒店限本酒店。
+  普通预订自动确认，无酒店审批；来宾不自行订房。
+  入住前一日18:00整起，特殊改订须管理员及酒店均确认并留痕，
+  随后由负责接待人员确认新方案及差额；原单仍须处于已确认。
+endlegend
+@enduml

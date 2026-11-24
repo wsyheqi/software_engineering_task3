@@ -1,0 +1,47 @@
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      timeout: 60m
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${COOKIE_SECURE:false}
+  error:
+    include-message: never
+spring:
+  application:
+    name: campus-hospitality
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:${CAMPUS_HOSPITALITY_DATA_DIR:./data}/hospitality;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=5000;WRITE_DELAY=0}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 16
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: Asia/Shanghai
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp:
+        auth: ${SMTP_AUTH:true}
+        starttls.enable: ${SMTP_STARTTLS:true}
+        connectiontimeout: 5000
+        timeout: 5000
+        writetimeout: 5000
+app:
+  zone: Asia/Shanghai
+  demo: ${DEMO_DATA:true}
+  mail-enabled: ${MAIL_ENABLED:false}
+  mail-from: ${MAIL_FROM:campus@example.edu.cn}
+  scheduling: ${SCHEDULING_ENABLED:true}
+logging:
+  level:
+    root: INFO
+    org.springframework.security: WARN

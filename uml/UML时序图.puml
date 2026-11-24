@@ -1,0 +1,96 @@
+@startuml
+title 酒店停业与替代安置序列图
+autonumber
+
+actor "酒店工作人员" as Hotel
+actor "负责接待人员" as Reception
+control "异常安置" as Relocation
+control "订单管理" as Order
+control "房源管理" as Inventory
+control "通知与待处理" as Notice
+database "业务数据库" as DB
+participant "学校邮件服务" as Email
+
+Hotel -> Relocation : 确认停业及受影响范围
+Relocation -> Relocation : 校验身份及本酒店操作权限
+break 无本酒店操作权限
+  Relocation -> DB : 记录越权拒绝
+  Relocation --> Hotel : 拒绝，不修改业务数据
+end
+
+group 先停售并保留原订单
+  Relocation -> Inventory : 停售受影响日期
+  Inventory -> DB : 保存停售，原占用保持不变
+  opt 已有实际入住
+    Hotel -> Relocation : 提供已核实的实住间夜及费用
+    Relocation -> DB : 保存原已住事实及费用
+  end
+  Relocation -> Order : 受影响原单转待安置
+  Order -> DB : 保存待安置、异常及操作日志
+  Relocation -> DB : 持久化站内和邮件通知任务
+end
+
+Relocation -> Notice : 执行停业双渠道通知
+Notice -> DB : 写入负责接待人员的站内通知
+Notice -> Email : 发送停业邮件
+Email --> Notice : 发送结果
+Notice -> DB : 保存各渠道发送结果
+opt 发送失败
+  Notice -> DB : 生成管理员待处理项
+end
+
+Reception -> Relocation : 查询替代方案
+Relocation -> Relocation : 调用查询推荐，筛选符合原条件的酒店
+Relocation --> Reception : 合格候选或无可用方案
+note over Reception,Order
+  未确认方案或没有合格候选时，原单仍待安置。
+  原单已入住时，替代新单只安排剩余日期。
+end note
+
+Reception -> Relocation : 确认替代方案及安置请求标识
+Relocation -> Relocation : 校验接待责任范围及方案
+break 无接待责任权限或方案不合格
+  Relocation -> DB : 记录拒绝结果
+  Relocation --> Reception : 拒绝，原单及原占用不变
+end
+Relocation -> DB : 查询安置请求及原单状态
+DB --> Relocation : 原结果 / 处理中 / 原单待安置 / 原单已关闭
+
+alt 同请求已经安置成功
+  Relocation --> Reception : 返回已关联新单，不重复处理
+else 同请求已有失败或待重新确认结果
+  Relocation --> Reception : 返回原结果，重新确认使用新请求
+else 同请求仍处理中或已有其他请求完成安置
+  Relocation --> Reception : 查询原处理结果或已关联新单，不再创建
+else 原单待安置且接待人员已确认
+  Relocation -> Order : 创建替代新单并完成安置
+  Order -> Inventory : 复核剩余日期价格与名额
+  Inventory --> Order : 可用 / 变化待确认 / 不足
+  alt 变化待确认或名额不足
+    Order -> DB : 保存本次待确认或失败结果，不修改占用
+    Order --> Relocation : 原单仍待安置，原占用保留
+    Relocation --> Reception : 提示重新确认或选择其他方案
+  else 当前方案未变化且可用
+    critical 替代预订与原单处理一致完成
+      Order -> DB : 原子复核并确认新单、关闭原单、释放原占用、\n关联新旧单并保存安置结果
+      DB --> Order : 成功 / 并发变化待确认 / 失败
+    end
+    alt 全部成功
+      Order --> Relocation : 新单已确认，原单已关闭
+      Relocation --> Reception : 返回安置结果及关联新单
+    else 提交时变化或失败
+      Order -> DB : 回滚业务写入，保存可查询的本次结果
+      Order --> Relocation : 整体不生效，原单及原占用保留
+      Relocation --> Reception : 提示重新确认或选择其他方案
+    end
+  end
+end
+
+note over Order,DB
+  不可用或待重新确认时不提交成功安置，临时写入全部回滚。
+  事务内再次检查原单状态、请求唯一性及新房源。
+  停售不随释放占用解除；原实住及费用保留，原新单分段统计。
+  通知失败不撤销业务；提交结果不明确时按原请求查验。
+  同请求失败结果亦不改写；选择新方案重新确认时采用新请求标识。
+end note
+@enduml

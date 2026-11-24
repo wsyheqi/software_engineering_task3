@@ -1,0 +1,55 @@
+@startuml
+title 学校来宾酒店预订系统——分层与模块架构
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "来宾 / 学校接待人员 / 酒店工作人员 / 平台管理员" as Users
+component "Web 表示层\n角色工作区、方案及规则确认、结果查询" as Web
+
+package "后端应用：模块化单体（一个部署单元）" {
+  component "接口层\n认证、参数校验、对象权限、受权 DTO" as Api
+  component "应用层\n用例编排、幂等请求、事务边界" as App
+  package "领域模块" {
+    package "接待业务" as Business {
+      component "查询与推荐\n住宿需求、报价快照" as Search
+      component "订单管理\n九态、改订、取消、规则快照" as Booking
+      component "入住与退房\n逐人到店、实住、续住、未入住" as Stay
+      component "异常安置\n停业、替代确认、新旧单关联" as Relocation
+    }
+    package "基础资料" as Master {
+      component "酒店与校方资料\n地点距离、审核评价、费用规则" as Hotel
+      component "房源管理\n逐日价格、名额、停用、停售" as Inventory
+    }
+    package "通用支撑" as Support {
+      component "身份与权限" as Identity
+      component "通知与待处理" as Notice
+      component "统计报表" as Report
+      component "操作日志" as Audit
+    }
+  }
+  component "基础设施层\nRepository、任务执行器、学校邮件适配器、统一时钟" as Infra
+}
+database "统一业务数据库\n订单、逐晚占用、请求结果、实住、通知任务、审计" as DB
+cloud "学校邮件服务" as Email
+
+Users --> Web
+Web --> Api : HTTPS / JSON
+Api --> App
+App --> Business
+App --> Master
+App --> Support
+Business --> Infra
+Master --> Infra
+Support --> Infra
+Infra --> DB
+Infra --> Email : 已提交任务发送
+
+legend bottom
+  十个模块与原 UML 组件图对应；每个模块内部按接口、应用、领域、基础设施分层。
+  订单、全部名额、请求结果与成功审计共享同一数据库事务。
+  通知任务在业务事务内保存，发送在提交后执行；发送失败进入管理员待处理。
+  受保护操作校验角色、对象责任范围与字段可见性。
+endlegend
+@enduml

@@ -1,0 +1,44 @@
+@startuml
+title 订单生命周期状态图
+
+state "预订中" as Pending
+state "已确认" as Confirmed
+state "预订失败" as Failed
+state "已入住" as CheckedIn
+state "已退房" as CheckedOut
+state "已取消" as Cancelled
+state "未入住" as NoShow
+state "待安置" as Relocating
+state "已关闭（停业）" as Closed
+
+[*] --> Pending : 确认当前方案并提交预订
+Pending --> Confirmed : 全部明细复核成功\n/ 保存锁定价、规则及全部占用
+Pending --> Failed : 任一晚不足或确定失败\n/ 不留部分占用
+Confirmed --> CheckedIn : 酒店登记首位实际到店人
+Confirmed --> Cancelled : 接待人员整单取消\n/ 记取消费并释放名额
+Confirmed --> NoShow : 酒店登记未入住\n[次日12:00后且无另行保留]\n/ 释放后续名额并通知
+CheckedIn --> CheckedOut : 正常或提前退房\n/ 保存实住，释放未住日期
+Confirmed --> Relocating : 确认停业影响本单\n/ 停售并暂留原占用
+CheckedIn --> Relocating : 停业影响剩余住宿\n/ 保存已住及费用，停售并暂留
+Relocating --> Closed : [接待人员确认且替代新单成功]\n/ 关联新单并释放原占用
+
+Confirmed : 改订成功保持已确认；失败保留原单与占用
+Confirmed : 截止后改订须双方批准当前方案且接待人员确认差额
+Confirmed : 入住日24:00提醒核实，不自动登记未入住
+CheckedIn : 同单来宾补登记、续住成功均保持已入住
+Relocating : 未确认或替代失败时保持待安置及原占用
+
+Failed --> [*]
+Cancelled --> [*]
+NoShow --> [*]
+CheckedOut --> [*]
+Closed --> [*]
+
+legend bottom
+  九种业务状态之外的请求进度单独管理；价格或名额变化但仍可订时须重新确认。
+  待重新确认仅为请求进度，不生成已确认订单或占用；新确认使用新请求标识。
+  取消截止为入住前一日18:00：之前免费，整点起按各间房锁定首晚价之和计费。
+  五个终态不恢复入住，未入住后来到店须新订；停业关闭保留实住及费用。
+  原占用释放后，受影响日期的停售标记仍然有效。
+endlegend
+@enduml

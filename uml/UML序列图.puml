@@ -1,0 +1,73 @@
+@startuml
+title 自动预订与重复请求处理序列图
+autonumber
+
+actor "学校接待人员" as Reception
+boundary "预订界面" as UI
+control "订单管理" as Order
+control "身份与权限" as Auth
+control "房源管理" as Inventory
+database "业务数据库" as DB
+
+note over Reception,Order
+  前置：已展示当前方案、取消期限及可能费用。
+  接待人员确认本次方案，提交稳定请求标识。
+end note
+
+Reception -> UI : 确认预订
+UI -> Order : 提交请求标识及方案
+Order -> Auth : 校验角色及接待责任范围
+Auth --> Order : 校验结果
+
+alt 无权限
+  Order -> DB : 记录拒绝日志
+  Order --> UI : 拒绝操作
+else 有权限
+  Order -> DB : 按请求标识查重并取得处理权
+  DB --> Order : 已完成 / 处理中 / 首次处理
+  alt 同请求已完成
+    Order --> UI : 返回原结果及原订单关联
+  else 同请求仍处理中
+    Order --> UI : 返回处理中及原请求查询入口
+  else 首次处理
+    Order -> DB : 读取当前酒店资格及适用规则
+    DB --> Order : 审核评价、距离及规则
+    Order -> Inventory : 查询全部房型、全部住宿晚
+    Inventory -> DB : 读取当前价格及可用量
+    DB --> Inventory : 逐日房源数据
+    Inventory --> Order : 整单报价、名额及方案是否变化
+
+    alt 资格不合格、超出原条件或任一晚不足
+      Order -> DB : 保存失败结果及日志，无名额占用
+      Order --> UI : 整单失败，可查询合格替代酒店
+    else 价格、名额或待确认规则变化但仍满足原条件
+      Order -> DB : 保存重新确认提示，无名额占用
+      Order --> UI : 展示最新方案，等待重新确认
+    else 方案未变化且条件满足
+      critical 全部明细与请求结果一致提交
+        Order -> DB : 原子复核并提交订单、全部占用、\n逐晚锁定价、规则快照及请求结果
+        DB --> Order : 全部成功 / 条件变化 / 确定失败
+      end
+      alt 全部成功
+        Order --> UI : 已确认订单及原请求结果
+      else 提交时条件变化或确定失败
+        Order -> DB : 回滚业务写入，持久化可查询的本次结果
+        Order --> UI : 返回重新确认或整单失败结果
+        note over Order,DB
+          事务内重新检查酒店资格、请求唯一性及全部房源。
+          任一明细失败整体回滚，不留下部分订单或占用。
+          条件变化后的分支规则与提交前一致。
+        end note
+      end
+    end
+  end
+end
+
+UI --> Reception : 展示本次结果
+note over Reception,DB
+  结果不明确或响应丢失时，继续按原请求查询及重试。
+  修改方案并重新确认属于新操作，使用新请求标识。
+  同一请求的失败、待重新确认及成功结果均可回查，不悄悄改写为另一结果。
+  原操作重试不产生第二笔订单；普通预订无酒店审批。
+end note
+@enduml

@@ -1,0 +1,17 @@
+.runtime/
+.m2/
+data/
+logs/
+code/frontend/node_modules/
+code/frontend/dist/
+code/backend/target/
+code/release/
+.env
+*.log
+.idea/
+.vscode/
+*.mv.db
+*.trace.db
+playwright-report/
+test-results/
+/学宾接待.lnk

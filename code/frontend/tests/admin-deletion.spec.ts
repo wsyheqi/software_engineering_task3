@@ -1,0 +1,65 @@
+import { test, expect, type Page } from '@playwright/test'
+
+async function login(page: Page, username = 'admin') {
+  await page.goto(process.env.E2E_BASE_URL || 'http://127.0.0.1:8080')
+  await page.getByLabel('账号', {exact: true}).fill(username)
+  await page.getByLabel('密码', {exact: true}).fill('Demo@123456')
+  await page.getByRole('button', {name: '登录工作空间', exact: true}).click()
+}
+
+test('管理员可以取消删除，确认后酒店从管理列表移除且仍可查历史', async ({page}) => {
+  await login(page)
+  await expect(page.getByRole('heading', {name: '平台管理', exact: true})).toBeVisible()
+  const name = `删除验证酒店${Date.now()}`
+  await page.getByRole('button', {name: '新增酒店', exact: true}).click()
+  const edit = page.getByRole('dialog', {name: '酒店资料与学校质量审核'})
+  await edit.getByLabel('酒店名称', {exact: true}).fill(name)
+  await edit.getByLabel('酒店地址', {exact: true}).fill('自动化测试专用地址')
+  await edit.getByRole('button', {name: '保存资料'}).click()
+  const row = page.getByRole('row').filter({hasText: name})
+  await expect(row).toBeVisible()
+  await row.getByRole('button', {name: `删除酒店 ${name}`, exact: true}).click()
+  const confirmation = page.getByRole('dialog', {name: '删除酒店', exact: true})
+  await expect(confirmation).toContainText('历史订单、费用、统计与操作日志保留')
+  await confirmation.getByRole('button', {name: '取消', exact: true}).click()
+  await expect(row).toBeVisible()
+  await row.getByRole('button', {name: `删除酒店 ${name}`, exact: true}).click()
+  await page.screenshot({path: '../docs/screenshots/admin-deletion.png', fullPage: true, animations: 'disabled'})
+  await confirmation.getByRole('button', {name: '确认删除', exact: true}).click()
+  await expect(row).toHaveCount(0)
+  const catalog = await (await page.request.get('/api/catalog')).json()
+  expect(catalog.hotels.some((hotel: {name: string}) => hotel.name === name)).toBeFalsy()
+  expect(catalog.reportHotels.some((hotel: {name: string; deletedAt?: string}) => hotel.name === name && hotel.deletedAt)).toBeTruthy()
+  await page.getByRole('navigation').getByRole('button', {name: '接待住宿统计'}).click()
+  await expect(page.getByRole('option', {name: `${name}（已删除·历史）`, exact: true})).toHaveCount(1)
+})
+
+test('管理员可以删除空闲账号，已有登录立即失效且自身删除被禁用', async ({page, browser}) => {
+  await login(page)
+  await page.getByRole('button', {name: '账号与角色', exact: true}).click()
+  await expect(page.getByRole('button', {name: '删除账号 admin', exact: true})).toBeDisabled()
+  const username = `delete_user_${Date.now()}`
+  await page.getByRole('button', {name: '新增账号', exact: true}).click()
+  const edit = page.getByRole('dialog', {name: '管理账号与角色'})
+  await edit.getByLabel('账号', {exact: true}).fill(username)
+  await edit.getByLabel('姓名 / 名称', {exact: true}).fill('删除验证接待账号')
+  await edit.getByLabel('初始密码', {exact: true}).fill('Demo@123456')
+  await edit.getByRole('button', {name: '保存资料'}).click()
+  const row = page.getByRole('row').filter({hasText: username})
+  await expect(row).toBeVisible()
+  const context = await browser.newContext()
+  try {
+    const other = await context.newPage()
+    await login(other, username)
+    await expect(other.getByRole('heading', {name: '住宿预订', exact: true})).toBeVisible()
+    await row.getByRole('button', {name: `删除账号 ${username}`, exact: true}).click()
+    await page.getByRole('dialog', {name: '删除账号', exact: true}).getByRole('button', {name: '确认删除'}).click()
+    await expect(row).toHaveCount(0)
+    await other.getByRole('navigation').getByRole('button', {name: '订单与安置'}).click()
+    await expect(other.getByRole('button', {name: '登录工作空间', exact: true})).toBeVisible()
+    await other.getByLabel('账号', {exact: true}).fill(username)
+    await other.getByLabel('密码', {exact: true}).fill('Demo@123456')
+    await other.getByRole('button', {name: '登录工作空间', exact: true}).click()
+    await expect(other.getByText('账号或密码不正确', {exact: true})).toBeVisible()
+  } finally { await context.close() }
+})
